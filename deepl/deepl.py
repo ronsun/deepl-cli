@@ -137,35 +137,41 @@ class DeepLCLI:
                 msg = f"Page loading failed with status code {response.status}: {error_text}"
                 raise DeepLCLIError(msg)
 
+            # Wait for React hydration to complete before interacting with the page
+            try:
+                await page.wait_for_load_state("networkidle", timeout=self.timeout)
+            except PlaywrightError:
+                pass  # proceed even if networkidle times out; elements may still be ready
+
             try:
                 page.get_by_role("main")
             except PlaywrightError as e:
                 msg = f"Maybe Time limit exceeded. ({self.timeout} ms)"
                 raise DeepLCLIPageLoadError(msg) from e
 
-            await page.locator(
-                "button[data-testid=translator-source-lang-btn]",
-            ).dispatch_event("click")
+            src_lang_btn = page.locator("button[data-testid=translator-source-lang-btn]")
+            await src_lang_btn.wait_for(state="visible", timeout=self.timeout)
+            await src_lang_btn.click()
 
-            await (
+            src_lang_opt = (
                 page.get_by_test_id("translator-source-lang-list")
-                .get_by_test_id(
-                    f"translator-lang-option-{self.fr_lang}",
-                )
-                .first.dispatch_event("click")
+                .get_by_test_id(f"translator-lang-option-{self.fr_lang}")
+                .first
             )
+            await src_lang_opt.wait_for(state="visible", timeout=self.timeout)
+            await src_lang_opt.click()
 
-            await page.locator(
-                "button[data-testid=translator-target-lang-btn]",
-            ).dispatch_event("click")
+            tgt_lang_btn = page.locator("button[data-testid=translator-target-lang-btn]")
+            await tgt_lang_btn.wait_for(state="visible", timeout=self.timeout)
+            await tgt_lang_btn.click()
 
-            await (
+            tgt_lang_opt = (
                 page.get_by_test_id("translator-target-lang-list")
-                .get_by_test_id(
-                    f"translator-lang-option-{self.to_lang}",
-                )
-                .first.dispatch_event("click")
+                .get_by_test_id(f"translator-lang-option-{self.to_lang}")
+                .first
             )
+            await tgt_lang_opt.wait_for(state="visible", timeout=self.timeout)
+            await tgt_lang_opt.click()
 
             await page.fill(
                 "[data-testid=translator-source-input] div[role=textbox]",
