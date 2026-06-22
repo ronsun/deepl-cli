@@ -248,11 +248,21 @@ class DeepLCLI:
         return script.replace("/", r"\/").replace("|", r"\|")
 
     async def __get_browser(self, p: Playwright) -> Browser:
-        """Launch browser executable and get playwright browser object."""
+        """Launch browser executable and get playwright browser object.
+
+        DeepL's web translator is fronted by a Cloudflare managed challenge
+        ("Checking if the connection is secure..."). A headless browser never
+        clears it: the challenge overlay keeps intercepting pointer events and
+        every interaction times out. A headed browser passes the challenge
+        automatically, so we launch headed by default. Set DEEPL_HEADLESS=1 to
+        force the old headless behavior (only useful if the challenge is absent).
+        """
         install([p.chromium], with_deps=True)
 
+        headless = os.environ.get("DEEPL_HEADLESS", "") not in ("", "0", "false", "False")
+
         return await p.chromium.launch(
-            headless=True,
+            headless=headless,
             args=[
                 "--no-sandbox",
                 "--single-process" if os.name != "nt" else "",
